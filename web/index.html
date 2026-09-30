@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111d32">
+  <meta name="description" content="IBM i 本地仓库与 GitHub PR 的可追溯 QA 工作台">
+  <title>QAAgent · IBM i 变更审查</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="shell">
+    <aside class="rail" aria-label="工作台导航">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">Q<span></span></span><div><strong>QAAgent</strong><small>IBM i Review</small></div></div>
+      <div class="rail-section-label">WORKSPACE</div>
+      <a class="rail-link active" href="#workspace"><span class="rail-icon">▦</span> 审查工作台</a>
+      <a class="rail-link" href="#evidence"><span class="rail-icon">◫</span> 交付证据</a>
+      <div class="rail-bottom"><div class="local-dot"></div><div><strong>本机工作台</strong><small>服务仅监听 127.0.0.1</small></div></div>
+    </aside>
+
+    <main id="workspace" class="main">
+      <header class="topbar">
+        <div class="crumb">工作台 <span>/</span> IBM i 变更审查</div>
+        <div class="topbar-right"><span class="environment">DEMO ENVIRONMENT</span><span class="avatar" aria-label="本地用户">QA</span></div>
+      </header>
+
+      <div class="content">
+        <section class="intro">
+          <div><div class="eyebrow"><span class="eyebrow-line"></span> CHANGE ASSURANCE</div><h1>IBM i 变更审查</h1><p>选择本地仓库或 GitHub PR，定位 RPGLE、DDS、CLLE 风险，并保留可复核的交付证据。</p></div>
+          <div class="intro-meta"><span class="meta-icon">⌁</span><div><strong>只读分析</strong><small>不会修改源码或合并分支</small></div></div>
+        </section>
+
+        <div id="notice" class="notice hidden" role="alert"></div>
+
+        <section class="workspace-grid" aria-label="审查配置与摘要">
+          <div class="panel setup-panel">
+            <div class="panel-heading"><div><span class="section-kicker">01 / CONFIGURE</span><h2>选择审查范围</h2></div><span class="panel-icon">⌘</span></div>
+            <div class="mode-switch" role="tablist" aria-label="仓库来源">
+              <button id="mode-local" type="button" role="tab" aria-selected="true" aria-controls="local-fields" class="mode-tab active"><span>▣</span> 本地仓库</button>
+              <button id="mode-github" type="button" role="tab" aria-selected="false" aria-controls="online-fields" class="mode-tab"><span>⌁</span> 在线仓库</button>
+            </div>
+            <form id="review-form">
+              <div id="local-fields" role="tabpanel" aria-labelledby="mode-local">
+                <label for="repo-select">选择本地 Git 仓库</label>
+                <select id="repo-select" aria-describedby="local-help"><option value="">正在查找仓库…</option></select>
+                <div class="local-actions"><button id="browse-button" type="button" class="minor-button">浏览文件夹</button><button id="scan-button" type="button" class="text-button">重新扫描</button></div>
+                <div id="local-help" class="field-hint">自动查找 Documents 下的仓库；也可使用系统文件夹选择器。</div>
+                <div class="field-row">
+                  <div><label for="base-branch">目标分支</label><select id="base-branch" name="baseBranch" aria-describedby="base-help"><option value="main">main</option></select></div>
+                  <div><label>当前分支</label><div id="current-branch" class="readonly-field">读取中…</div></div>
+                </div>
+                <div id="base-help" class="field-hint">比较目标分支与当前已提交的 HEAD</div>
+              </div>
+              <div id="online-fields" role="tabpanel" aria-labelledby="mode-github" hidden>
+                <label for="github-url">GitHub 仓库或 PR 链接</label>
+                <div class="input-row"><input id="github-url" type="text" inputmode="url" spellcheck="false" autocomplete="off" placeholder="https://github.com/owner/repo"><button id="load-pulls" type="button" class="minor-button">读取 PR</button></div>
+                <div class="field-hint">粘贴仓库链接会列出最近更新的开放 PR；粘贴 PR 链接则直接定位。</div>
+                <label for="pr-select" class="field-spaced">选择 PR</label>
+                <select id="pr-select" disabled><option value="">先读取仓库 PR</option></select>
+                <details class="auth-details"><summary>私有仓库访问 <span>可选</span></summary><div class="auth-body"><label for="github-token">Fine-grained access token</label><input id="github-token" type="password" autocomplete="off" spellcheck="false" placeholder="仅在本次读取时使用"><div class="field-hint">建议仅授权该仓库的 Contents 与 Pull requests 读取权限。令牌不写入磁盘、报告或 Git URL；审查后会清空输入框。</div></div></details>
+                <div class="online-note"><span>🔒</span> 公开 PR 无需登录。GitHub 不接受账户密码进行 Git 操作。</div>
+              </div>
+              <div class="extension-options" aria-label="可选审查步骤">
+                <label class="extension-option" for="run-ai"><input id="run-ai" type="checkbox" disabled><span><strong>大模型辅助审查</strong><small>主动选择后，将本次 Git diff 发送至已配置的获批模型</small></span></label>
+                <label class="extension-option" for="run-ibmi"><input id="run-ibmi" type="checkbox" disabled><span><strong>IBM i 数据校验</strong><small>通过服务端适配器调用现有只读 skill 工具</small></span></label>
+                <div id="integration-hint" class="field-hint">可选步骤尚未配置；规则审查可直接运行。</div>
+              </div>
+              <button id="run-button" type="submit" class="primary-button"><span class="button-icon">▶</span><span id="run-button-text">运行变更审查</span><span class="button-arrow">→</span></button>
+            </form>
+          </div>
+
+          <div class="panel summary-panel" id="summary-panel">
+            <div class="panel-heading"><div><span class="section-kicker">02 / ASSESSMENT</span><h2>审查摘要</h2></div><span id="run-status" class="status-pill waiting"><span></span> 等待审查</span></div>
+            <div class="summary-stats">
+              <div class="stat"><strong id="count-total">—</strong><span>待复核发现</span></div>
+              <div class="stat"><strong id="count-high">—</strong><span>高风险</span></div>
+              <div class="stat"><strong id="count-medium">—</strong><span>中风险</span></div>
+              <div class="stat"><strong id="count-files">—</strong><span>变更文件</span></div>
+            </div>
+            <div class="summary-divider"></div>
+            <div class="commit-row"><div class="commit-icon">⌁</div><div><span id="commit-label">当前提交</span><strong id="commit-message">等待选择仓库</strong><small id="commit-sha">—</small></div></div>
+          </div>
+        </section>
+
+        <section class="checks-section" aria-labelledby="checks-title"><div class="section-heading"><div><span class="section-kicker">VALIDATION GATES</span><h2 id="checks-title">验证状态</h2></div><p>每项结论保留实际执行状态</p></div><div id="checks" class="checks-grid"><div class="check-card skeleton"></div><div class="check-card skeleton"></div><div class="check-card skeleton"></div><div class="check-card skeleton"></div><div class="check-card skeleton"></div></div></section>
+        <section id="extensions-output" class="extensions-output" aria-label="扩展审查结果" hidden></section>
+
+        <section class="review-section" aria-labelledby="findings-title">
+          <div class="section-heading review-heading"><div><span class="section-kicker">REVIEW OUTPUT</span><h2 id="findings-title">风险与证据</h2></div><div class="export-actions"><a id="export-md" class="export-button disabled" aria-disabled="true" href="#">导出 Markdown</a><a id="export-json" class="export-button disabled" aria-disabled="true" href="#">导出 JSON</a></div></div>
+          <div class="review-grid">
+            <div class="panel findings-panel"><div class="filter-bar" role="group" aria-label="风险级别筛选"><button class="filter active" data-filter="all" aria-pressed="true">全部 <span id="filter-all-count">0</span></button><button class="filter" data-filter="high" aria-pressed="false">高风险</button><button class="filter" data-filter="medium" aria-pressed="false">中风险</button></div><div id="finding-list" class="finding-list"><div class="empty-state"><div class="empty-symbol">◎</div><strong>等待审查结果</strong><p>选择本地仓库或在线 PR 后运行审查，风险会在这里列出。</p></div></div></div>
+            <div class="panel detail-panel" id="detail-panel"><div class="empty-state detail-empty"><div class="empty-symbol">◫</div><strong>选择一项发现</strong><p>查看变更证据、影响说明与建议验证步骤。</p></div></div>
+          </div>
+        </section>
+
+        <section id="evidence" class="evidence-section panel"><div><span class="section-kicker">DELIVERY EVIDENCE</span><h2>本次审查记录</h2><p id="run-meta">运行后将显示 SHA、时间和报告编号。</p></div><div class="evidence-note"><strong>审查边界</strong><p>模型建议与 IBM i 数据证据独立展示；编译与 RPGUnit 测试未执行时会明确标记。</p></div></section>
+        <footer>QAAgent · Synthetic IBM i demo <span>本地运行 · 虚构代码与数据</span></footer>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
